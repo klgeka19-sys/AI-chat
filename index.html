@@ -38,9 +38,9 @@
     </div>
 
     <script>
-        // === НАСТРОЙКА ИИ ===
-        // Вставь свой скопированный API-ключ от Google Gemini между кавычками ниже:
-        const API_KEY = "process.env.GEMINI_API_KEY"; 
+                // === НАСТРОЙКА ИИ ===
+        // Вставь сюда свой настоящий API-ключ от Google AI Studio вместо кавычек:
+        const API_KEY = "СЮДА_ВСТАВЬ_СВОЙ_КЛЮЧ_AI_STUDIO"; 
         
         // Системный промпт (Инструкция для вхождения в роль персонажа)
         const SYSTEM_INSTRUCTION = `
@@ -73,78 +73,60 @@
         async function sendMessageToGemini(userText) {
             const url = `https://googleapis.com{API_KEY}`;
             
-            // Формируем историю для отправки (чтобы модель помнила прошлые реплики)
-            // Добавляем текущее сообщение пользователя в историю
             chatHistory.push({ role: "user", parts: [{ text: userText }] });
 
-            // Подготавливаем структуру запроса в соответствии с правилами Google API
             const requestData = {
                 contents: chatHistory,
                 systemInstruction: {
                     parts: [{ text: SYSTEM_INSTRUCTION }]
                 },
                 generationConfig: {
-                    temperature: 0.7, // Степень креативности персонажа
+                    temperature: 0.7,
                     maxOutputTokens: 800
                 }
             };
 
             try {
+                sendBtn.disabled = true;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestData)
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Ошибка сервера: ${response.status}`);
-                }
+                if (!response.ok) throw new Error('Ошибка сети');
 
                 const data = await response.json();
+                const botText = data.candidates[0].content.parts[0].text;
                 
-                // Вытаскиваем чистый текст ответа нейросети
-                const botResponse = data.candidates[0].content.parts[0].text;
-                
-                // Добавляем ответ ИИ в историю диалога, чтобы контекст сохранялся дальше
-                chatHistory.push({ role: "model", parts: [{ text: botResponse }] });
-                
-                return botResponse;
+                appendMessage(botText, false);
+                chatHistory.push({ role: "model", parts: [{ text: botText }] });
 
             } catch (error) {
                 console.error(error);
-                // Если произошла ошибка, удаляем последнее сообщение пользователя из памяти, чтобы история не ломалась
-                chatHistory.pop();
-                return "Ой, что-то связь прервалась... Попробуй отправить сообщение еще раз!";
+                appendMessage("Ошибка: Нема соединения. Проверь API-ключ!", false);
+            } finally {
+                sendBtn.disabled = false;
             }
         }
 
-        // Обработчик клика по кнопке
-        async function handleSend() {
+        // Обработчик кнопки «Отправить»
+        sendBtn.addEventListener('click', () => {
             const text = userInput.value.trim();
-            if (!text) return;
+            if (text) {
+                appendMessage(text, true);
+                userInput.value = '';
+                sendMessageToGemini(text);
+            }
+        });
 
-            appendMessage(text, true);
-            userInput.value = '';
-            
-            // Отключаем кнопку и инпут на время генерации ответа
-            userInput.disabled = true;
-            sendBtn.disabled = true;
-
-            const aiResponse = await sendMessageToGemini(text);
-            
-            appendMessage(aiResponse, false);
-
-            // Включаем обратно
-            userInput.disabled = false;
-            sendBtn.disabled = false;
-            userInput.focus();
-        }
-
-        sendBtn.addEventListener('click', handleSend);
+        // Отправка по нажатию Enter
         userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSend();
+            if (e.key === 'Enter') sendBtn.click();
         });
     </script>
 </body>
 </html>
+
+            
   
